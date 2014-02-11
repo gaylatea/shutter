@@ -7,14 +7,14 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/ec2"
 	"log"
-	"fmt"
-	"flag"
-	"time"
-	"sync"
 	"os/exec"
+	"sync"
+	"time"
 )
 
 // Custom type for multiple command line-specified strings.
@@ -35,7 +35,7 @@ func freeze(mountpoints []string) {
 	w.Add(len(mountpoints))
 
 	for _, mp := range mountpoints {
-		go func(partition string){
+		go func(partition string) {
 			log.Printf("freezing %s for the snapshots.", partition)
 			cmd := exec.Command("xfs_freeze", "-f", partition)
 			cmd.Run()
@@ -55,7 +55,7 @@ func unfreeze(mountpoints []string) {
 	w.Add(len(mountpoints))
 
 	for _, mp := range mountpoints {
-		go func(partition string){
+		go func(partition string) {
 			log.Printf("unfreezing %s now that snapshots are complete.", partition)
 			cmd := exec.Command("xfs_freeze", "-u", partition)
 			cmd.Run()
@@ -100,7 +100,8 @@ func main() {
 	// Do some sanity-checking on the arguments we're given.
 	// **TODO(silversupreme):** Add in support for figuring out what
 	// region to use from the EC2 instance metadata.
-	awsRegion, present := aws.Regions[*region]; if !present {
+	awsRegion, present := aws.Regions[*region]
+	if !present {
 		log.Fatalf("Given region %s not a supported AWS region!", *region)
 	}
 
@@ -137,7 +138,8 @@ func main() {
 	}
 
 	// Connect to EC2 and make sure everything is alright there.
-	credentials, err := aws.GetAuth("", ""); if err != nil {
+	credentials, err := aws.GetAuth("", "")
+	if err != nil {
 		log.Fatalf("%s", err)
 	}
 
@@ -157,7 +159,8 @@ func main() {
 			// Create the snapshot if we can.
 			log.Printf("Creating snapshot for %s", volumeId)
 
-			resp, err := ec2_conn.CreateSnapshot(volumeId, desc); if err != nil {
+			resp, err := ec2_conn.CreateSnapshot(volumeId, desc)
+			if err != nil {
 				log.Printf("Could not create snapshot for %s: %s", volumeId, err)
 				w.Done()
 				return

@@ -42,14 +42,14 @@ its descendents.</p>
                 <div class="highlight"><pre><span class="kn">package</span> <span class="nx">main</span>
 
 <span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&quot;flag&quot;</span>
+	<span class="s">&quot;fmt&quot;</span>
 	<span class="s">&quot;github.com/mitchellh/goamz/aws&quot;</span>
 	<span class="s">&quot;github.com/mitchellh/goamz/ec2&quot;</span>
 	<span class="s">&quot;log&quot;</span>
-	<span class="s">&quot;fmt&quot;</span>
-	<span class="s">&quot;flag&quot;</span>
-	<span class="s">&quot;time&quot;</span>
-	<span class="s">&quot;sync&quot;</span>
 	<span class="s">&quot;os/exec&quot;</span>
+	<span class="s">&quot;sync&quot;</span>
+	<span class="s">&quot;time&quot;</span>
 <span class="p">)</span></pre></div>
             </td>
           </tr>
@@ -90,7 +90,7 @@ its descendents.</p>
 	<span class="nx">w</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">mountpoints</span><span class="p">))</span>
 
 	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">mp</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">mountpoints</span> <span class="p">{</span>
-		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">partition</span> <span class="kt">string</span><span class="p">){</span>
+		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">partition</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
 			<span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;freezing %s for the snapshots.&quot;</span><span class="p">,</span> <span class="nx">partition</span><span class="p">)</span>
 			<span class="nx">cmd</span> <span class="o">:=</span> <span class="nx">exec</span><span class="p">.</span><span class="nx">Command</span><span class="p">(</span><span class="s">&quot;xfs_freeze&quot;</span><span class="p">,</span> <span class="s">&quot;-f&quot;</span><span class="p">,</span> <span class="nx">partition</span><span class="p">)</span>
 			<span class="nx">cmd</span><span class="p">.</span><span class="nx">Run</span><span class="p">()</span>
@@ -120,7 +120,7 @@ its descendents.</p>
 	<span class="nx">w</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">mountpoints</span><span class="p">))</span>
 
 	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">mp</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">mountpoints</span> <span class="p">{</span>
-		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">partition</span> <span class="kt">string</span><span class="p">){</span>
+		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">partition</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
 			<span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;unfreezing %s now that snapshots are complete.&quot;</span><span class="p">,</span> <span class="nx">partition</span><span class="p">)</span>
 			<span class="nx">cmd</span> <span class="o">:=</span> <span class="nx">exec</span><span class="p">.</span><span class="nx">Command</span><span class="p">(</span><span class="s">&quot;xfs_freeze&quot;</span><span class="p">,</span> <span class="s">&quot;-u&quot;</span><span class="p">,</span> <span class="nx">partition</span><span class="p">)</span>
 			<span class="nx">cmd</span><span class="p">.</span><span class="nx">Run</span><span class="p">()</span>
@@ -215,7 +215,8 @@ region to use from the EC2 instance metadata.</p>
 
             </td>
             <td class="code">
-                <div class="highlight"><pre>	<span class="nx">awsRegion</span><span class="p">,</span> <span class="nx">present</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">Regions</span><span class="p">[</span><span class="o">*</span><span class="nx">region</span><span class="p">];</span> <span class="k">if</span> <span class="p">!</span><span class="nx">present</span> <span class="p">{</span>
+                <div class="highlight"><pre>	<span class="nx">awsRegion</span><span class="p">,</span> <span class="nx">present</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">Regions</span><span class="p">[</span><span class="o">*</span><span class="nx">region</span><span class="p">]</span>
+	<span class="k">if</span> <span class="p">!</span><span class="nx">present</span> <span class="p">{</span>
 		<span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;Given region %s not a supported AWS region!&quot;</span><span class="p">,</span> <span class="o">*</span><span class="nx">region</span><span class="p">)</span>
 	<span class="p">}</span>
 
@@ -292,7 +293,8 @@ attached to the currently-running instance, if we can.</p>
 
             </td>
             <td class="code">
-                <div class="highlight"><pre>	<span class="nx">credentials</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">GetAuth</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">);</span> <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                <div class="highlight"><pre>	<span class="nx">credentials</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">GetAuth</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
 		<span class="nx">log</span><span class="p">.</span><span class="nx">Fatalf</span><span class="p">(</span><span class="s">&quot;%s&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
 	<span class="p">}</span>
 
@@ -343,7 +345,8 @@ Skip over any that are not actually present in EC2.</p>
             <td class="code">
                 <div class="highlight"><pre>			<span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Creating snapshot for %s&quot;</span><span class="p">,</span> <span class="nx">volumeId</span><span class="p">)</span>
 
-			<span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">ec2_conn</span><span class="p">.</span><span class="nx">CreateSnapshot</span><span class="p">(</span><span class="nx">volumeId</span><span class="p">,</span> <span class="nx">desc</span><span class="p">);</span> <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">ec2_conn</span><span class="p">.</span><span class="nx">CreateSnapshot</span><span class="p">(</span><span class="nx">volumeId</span><span class="p">,</span> <span class="nx">desc</span><span class="p">)</span>
+			<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
 				<span class="nx">log</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Could not create snapshot for %s: %s&quot;</span><span class="p">,</span> <span class="nx">volumeId</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
 				<span class="nx">w</span><span class="p">.</span><span class="nx">Done</span><span class="p">()</span>
 				<span class="k">return</span>
