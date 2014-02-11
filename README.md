@@ -18,3 +18,10 @@ administration.
       -description "PostgreSQL RAID from $HOSTNAME"
 
 Tested and built on darwin/amd64 (OS X Mavericks) and linux/amd64 (Amazon Linux).
+
+Dependencies are pulled down via gom, the awesome Golang package manager.
+You'll need that in order to hack on this.
+
+After you have that installed, it should be as simple as:
+
+    make all

@@ -1,2 +1,1 @@
 gom 'github.com/mitchellh/goamz/ec2'
-gom 'github.com/kdar/factorlog'
