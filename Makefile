@@ -12,4 +12,9 @@ fmt:
 build:
 	@gom exec gox -osarch "darwin/amd64 linux/amd64" -output "./bin/shutter_{{.OS}}.{{.Arch}}"
 
-.PHONY: all docs build fmt deps
+setup:
+	@go get github.com/mitchellh/gox
+	@gox -build-toolchain
+	@go get github.com/mattn/gom
+
+.PHONY: all docs build fmt deps setup
