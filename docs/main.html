@@ -208,9 +208,24 @@ unfrozen as a part of this snapshot.</p>
               <div class="pilwrap">
                   <a class="pilcrow" href="#section-9">&#182;</a>
               </div>
-                <p>Do some sanity-checking on the arguments we&rsquo;re given.
-<strong>TODO(silversupreme):</strong> Add in support for figuring out what
-region to use from the EC2 instance metadata.</p>
+                <p>Connect to EC2 and make sure everything is alright there.</p>
+
+            </td>
+            <td class="code">
+                <div class="highlight"><pre>	<span class="nx">credentials</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">GetAuth</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">logger</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+		<span class="k">return</span>
+	<span class="p">}</span></pre></div>
+            </td>
+          </tr>
+          
+          <tr id="section-10">
+            <td class="docs">
+              <div class="pilwrap">
+                  <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+                <p>Do some sanity-checking on the arguments we&rsquo;re given.</p>
 
             </td>
             <td class="code">
@@ -225,10 +240,10 @@ region to use from the EC2 instance metadata.</p>
             </td>
           </tr>
           
-          <tr id="section-10">
+          <tr id="section-11">
             <td class="docs">
               <div class="pilwrap">
-                  <a class="pilcrow" href="#section-10">&#182;</a>
+                  <a class="pilcrow" href="#section-11">&#182;</a>
               </div>
                 <p>Gotta take out the last character of the AZ for the proper
 region name.</p>
@@ -246,14 +261,15 @@ region name.</p>
 		<span class="k">return</span>
 	<span class="p">}</span>
 
-	<span class="nx">logger</span><span class="p">.</span><span class="nx">Successf</span><span class="p">(</span><span class="s">&quot;Backing up volumes in %s region.&quot;</span><span class="p">,</span> <span class="o">*</span><span class="nx">region</span><span class="p">)</span></pre></div>
+	<span class="nx">logger</span><span class="p">.</span><span class="nx">Successf</span><span class="p">(</span><span class="s">&quot;Backing up volumes in %s region.&quot;</span><span class="p">,</span> <span class="nx">realRegion</span><span class="p">)</span>
+	<span class="nx">ec2_conn</span> <span class="o">:=</span> <span class="nx">ec2</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">credentials</span><span class="p">,</span> <span class="nx">awsRegion</span><span class="p">)</span></pre></div>
             </td>
           </tr>
           
-          <tr id="section-11">
+          <tr id="section-12">
             <td class="docs">
               <div class="pilwrap">
-                  <a class="pilcrow" href="#section-11">&#182;</a>
+                  <a class="pilcrow" href="#section-12">&#182;</a>
               </div>
                 <p>Check that the number of descriptions and volumes match up.</p>
 
@@ -264,19 +280,68 @@ region name.</p>
             </td>
           </tr>
           
-          <tr id="section-12">
+          <tr id="section-13">
             <td class="docs">
               <div class="pilwrap">
-                  <a class="pilcrow" href="#section-12">&#182;</a>
+                  <a class="pilcrow" href="#section-13">&#182;</a>
               </div>
                 <p><strong>TODO(silversupreme):</strong> Make this instead use all volumes
 attached to the currently-running instance, if we can.</p>
 
             </td>
             <td class="code">
-                <div class="highlight"><pre>	<span class="k">if</span> <span class="nx">numVolumes</span> <span class="p">&lt;</span> <span class="mi">1</span> <span class="p">{</span>
-		<span class="nx">logger</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="s">&quot;No volumes specified!&quot;</span><span class="p">)</span>
-		<span class="k">return</span>
+                <div class="highlight"><pre>	<span class="kd">var</span> <span class="nx">realVolumes</span> <span class="p">[]</span><span class="kt">string</span>
+
+	<span class="k">if</span> <span class="nx">numVolumes</span> <span class="p">&lt;</span> <span class="mi">1</span> <span class="p">{</span></pre></div>
+            </td>
+          </tr>
+          
+          <tr id="section-14">
+            <td class="docs">
+              <div class="pilwrap">
+                  <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+                <p>Get the current instance ID from the metadata service.</p>
+
+            </td>
+            <td class="code">
+                <div class="highlight"><pre>		<span class="nx">metadataInstanceID</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">GetMetaData</span><span class="p">(</span><span class="s">&quot;instance-id&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="nx">logger</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;Could not get instance metadata for ID: %s&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span></pre></div>
+            </td>
+          </tr>
+          
+          <tr id="section-15">
+            <td class="docs">
+              <div class="pilwrap">
+                  <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+                <p>Get only the right EBS volumes for this instance.</p>
+
+            </td>
+            <td class="code">
+                <div class="highlight"><pre>		<span class="nx">instanceDriveFilter</span> <span class="o">:=</span> <span class="nx">ec2</span><span class="p">.</span><span class="nx">NewFilter</span><span class="p">()</span>
+		<span class="nx">instanceDriveFilter</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="s">&quot;attachment.instance-id&quot;</span><span class="p">,</span> <span class="nb">string</span><span class="p">(</span><span class="nx">metadataInstanceID</span><span class="p">))</span>
+
+		<span class="nx">ebsVols</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">ec2_conn</span><span class="p">.</span><span class="nx">Volumes</span><span class="p">(</span><span class="kc">nil</span><span class="p">,</span> <span class="nx">instanceDriveFilter</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="nx">logger</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;Could not retrieve EBS volumes: %s&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+
+		<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">vol</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">ebsVols</span><span class="p">.</span><span class="nx">Volumes</span> <span class="p">{</span>
+			<span class="nx">realVolumes</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">realVolumes</span><span class="p">,</span> <span class="nx">vol</span><span class="p">.</span><span class="nx">VolumeId</span><span class="p">)</span>
+		<span class="p">}</span>
+
+		<span class="nx">numVolumes</span> <span class="p">=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">realVolumes</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">numVolumes</span> <span class="p">&lt;</span> <span class="mi">1</span> <span class="p">{</span>
+			<span class="nx">logger</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;No EBS volumes found on this instance!&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+		<span class="nx">realVolumes</span> <span class="p">=</span> <span class="nx">volumes</span>
 	<span class="p">}</span>
 
 	<span class="k">if</span> <span class="nx">numDescriptions</span> <span class="o">!=</span> <span class="mi">1</span> <span class="p">{</span>
@@ -288,17 +353,17 @@ attached to the currently-running instance, if we can.</p>
             </td>
           </tr>
           
-          <tr id="section-13">
+          <tr id="section-16">
             <td class="docs">
               <div class="pilwrap">
-                  <a class="pilcrow" href="#section-13">&#182;</a>
+                  <a class="pilcrow" href="#section-16">&#182;</a>
               </div>
                 <p>Gather up all of the volumes and their descriptions.</p>
 
             </td>
             <td class="code">
                 <div class="highlight"><pre>	<span class="nx">volumesToSnapshot</span> <span class="o">:=</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{}</span>
-	<span class="k">for</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">value</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">volumes</span> <span class="p">{</span>
+	<span class="k">for</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">value</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">realVolumes</span> <span class="p">{</span>
 		<span class="kd">var</span> <span class="nx">thisDescription</span> <span class="kt">string</span>
 
 		<span class="k">if</span> <span class="nx">numDescriptions</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
@@ -312,29 +377,10 @@ attached to the currently-running instance, if we can.</p>
             </td>
           </tr>
           
-          <tr id="section-14">
+          <tr id="section-17">
             <td class="docs">
               <div class="pilwrap">
-                  <a class="pilcrow" href="#section-14">&#182;</a>
-              </div>
-                <p>Connect to EC2 and make sure everything is alright there.</p>
-
-            </td>
-            <td class="code">
-                <div class="highlight"><pre>	<span class="nx">credentials</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">GetAuth</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
-	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-		<span class="nx">logger</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
-		<span class="k">return</span>
-	<span class="p">}</span>
-
-	<span class="nx">ec2_conn</span> <span class="o">:=</span> <span class="nx">ec2</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">credentials</span><span class="p">,</span> <span class="nx">awsRegion</span><span class="p">)</span></pre></div>
-            </td>
-          </tr>
-          
-          <tr id="section-15">
-            <td class="docs">
-              <div class="pilwrap">
-                  <a class="pilcrow" href="#section-15">&#182;</a>
+                  <a class="pilcrow" href="#section-17">&#182;</a>
               </div>
                 <p>Freeze the requested filesystem.</p>
 
@@ -345,10 +391,10 @@ attached to the currently-running instance, if we can.</p>
             </td>
           </tr>
           
-          <tr id="section-16">
+          <tr id="section-18">
             <td class="docs">
               <div class="pilwrap">
-                  <a class="pilcrow" href="#section-16">&#182;</a>
+                  <a class="pilcrow" href="#section-18">&#182;</a>
               </div>
                 <p>Create snapshots of the requested volumes, in parallel.
 Skip over any that are not actually present in EC2.</p>
@@ -363,10 +409,10 @@ Skip over any that are not actually present in EC2.</p>
             </td>
           </tr>
           
-          <tr id="section-17">
+          <tr id="section-19">
             <td class="docs">
               <div class="pilwrap">
-                  <a class="pilcrow" href="#section-17">&#182;</a>
+                  <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
                 <p>Create the snapshot if we can.</p>
 
