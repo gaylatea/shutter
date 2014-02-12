@@ -7,14 +7,14 @@
 package main
 
 import (
+	"./util"
 	"flag"
 	"fmt"
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/ec2"
-	"log"
+	"os"
 	"os/exec"
 	"sync"
-	"time"
 )
 
 // Custom type for multiple command line-specified strings.
@@ -30,18 +30,18 @@ func (v *stringslice) Set(value string) error {
 }
 
 // Freeze the requested filesystems.
-func freeze(mountpoints []string) {
+func freeze(mountpoints []string, logger util.Logger) {
 	var w sync.WaitGroup
 	w.Add(len(mountpoints))
 
 	for _, mp := range mountpoints {
 		go func(partition string) {
-			log.Printf("freezing %s for the snapshots.", partition)
+			logger.Debugf("freezing %s for the snapshots.", partition)
 			cmd := exec.Command("xfs_freeze", "-f", partition)
 			cmd.Run()
 
 			output, _ := cmd.Output()
-			log.Printf("%s debug: %s", partition, string(output))
+			logger.Debugf("%s debug: %s", partition, string(output))
 			w.Done()
 		}(mp)
 	}
@@ -50,18 +50,18 @@ func freeze(mountpoints []string) {
 }
 
 // Unfreeze the requested filesystems.
-func unfreeze(mountpoints []string) {
+func unfreeze(mountpoints []string, logger util.Logger) {
 	var w sync.WaitGroup
 	w.Add(len(mountpoints))
 
 	for _, mp := range mountpoints {
 		go func(partition string) {
-			log.Printf("unfreezing %s now that snapshots are complete.", partition)
+			logger.Debugf("unfreezing %s now that snapshots are complete.", partition)
 			cmd := exec.Command("xfs_freeze", "-u", partition)
 			cmd.Run()
 
 			output, _ := cmd.Output()
-			log.Printf("%s debug: %s", partition, string(output))
+			logger.Debugf("%s debug: %s", partition, string(output))
 			w.Done()
 		}(mp)
 	}
@@ -70,8 +70,7 @@ func unfreeze(mountpoints []string) {
 }
 
 func main() {
-	ts := time.Now().UTC().Unix()
-	log.Printf("shutter: startup at %d", ts)
+	logger, _ := util.NewColourizedOutputLogger(os.Stdout)
 
 	// **-region:** only required if not running on an EC2 instance.
 	var region = flag.String("region", "", "EC2 region to look for EBS volumes in.")
@@ -100,12 +99,18 @@ func main() {
 	// Do some sanity-checking on the arguments we're given.
 	// **TODO(silversupreme):** Add in support for figuring out what
 	// region to use from the EC2 instance metadata.
-	awsRegion, present := aws.Regions[*region]
-	if !present {
-		log.Fatalf("Given region %s not a supported AWS region!", *region)
+	if *region == "" {
+		logger.Error("You did not specify a region!")
+		return
 	}
 
-	log.Printf("Backing up volumes in %s region.", *region)
+	awsRegion, present := aws.Regions[*region]
+	if !present {
+		logger.Errorf("Given region %s not a supported AWS region!", *region)
+		return
+	}
+
+	logger.Successf("Backing up volumes in %s region.", *region)
 
 	// Check that the number of descriptions and volumes match up.
 	numDescriptions := len(descriptions)
@@ -114,12 +119,14 @@ func main() {
 	// **TODO(silversupreme):** Make this instead use all volumes
 	// attached to the currently-running instance, if we can.
 	if numVolumes < 1 {
-		log.Fatalf("No volumes specified!")
+		logger.Error("No volumes specified!")
+		return
 	}
 
 	if numDescriptions != 1 {
 		if numDescriptions != numVolumes {
-			log.Fatalf("Mis-matched %d descriptions to %d volumes!", numDescriptions, numVolumes)
+			logger.Errorf("Mis-matched %d descriptions to %d volumes!", numDescriptions, numVolumes)
+			return
 		}
 	}
 
@@ -140,14 +147,15 @@ func main() {
 	// Connect to EC2 and make sure everything is alright there.
 	credentials, err := aws.GetAuth("", "")
 	if err != nil {
-		log.Fatalf("%s", err)
+		logger.Error(err.Error())
+		return
 	}
 
 	ec2_conn := ec2.New(credentials, awsRegion)
 
 	// Freeze the requested filesystem.
-	freeze(partitions)
-	defer unfreeze(partitions)
+	freeze(partitions, logger)
+	defer unfreeze(partitions, logger)
 
 	// Create snapshots of the requested volumes, in parallel.
 	// Skip over any that are not actually present in EC2.
@@ -157,21 +165,21 @@ func main() {
 	for volumeId, desc := range volumesToSnapshot {
 		go func(volumeId, desc string, ec2_conn *ec2.EC2) {
 			// Create the snapshot if we can.
-			log.Printf("Creating snapshot for %s", volumeId)
+			logger.Infof("Creating snapshot for %s", volumeId)
 
 			resp, err := ec2_conn.CreateSnapshot(volumeId, desc)
 			if err != nil {
-				log.Printf("Could not create snapshot for %s: %s", volumeId, err)
+				logger.Errorf("Could not create snapshot for %s: %s", volumeId, err)
 				w.Done()
 				return
 			}
 
-			log.Printf("Created snapshot %s for %s", resp.Snapshot.Id, volumeId)
+			logger.Successf("Created snapshot %s for %s", resp.Snapshot.Id, volumeId)
 			w.Done()
 		}(volumeId, desc, ec2_conn)
 	}
 
 	w.Wait()
 
-	log.Printf("shutter: done!")
+	logger.Infof("Done!")
 }
