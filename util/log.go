@@ -21,14 +21,18 @@ type Logger interface {
 	Errorf(format string, a ...interface{}) error
 	Debugf(format string, a ...interface{}) error
 	Successf(format string, a ...interface{}) error
+
+	SetDebugOutput(debugState bool) error
 }
 
 // **ColourizedOutputLogger** is an implementation of **Logger** that
 // outputs to the console with various colour levels to assist in
 // debugging.
 type ColourizedOutputLogger struct {
-	level_colours map[string]func(string) string
-	output_target io.Writer
+	levelColours map[string]func(string) string
+	levels       []string
+	outputTarget io.Writer
+	debugEnabled bool
 }
 
 // Create a new **ColourizedOutputLogger** and cache colours.
@@ -42,7 +46,17 @@ func NewColourizedOutputLogger(w io.Writer) (*ColourizedOutputLogger, error) {
 		"succeed": ansi.ColorFunc("green"),
 	}
 
-	return &ColourizedOutputLogger{level_colours: colours, output_target: w}, nil
+	return &ColourizedOutputLogger{
+		levelColours: colours,
+		outputTarget: w,
+		debugEnabled: false,
+	}, nil
+}
+
+// Enable debug output from the logger, which is usually off.
+func (csl *ColourizedOutputLogger) SetDebugOutput(debugState bool) error {
+	csl.debugEnabled = debugState
+	return nil
 }
 
 // Delegate the logging statements to the right handler.
@@ -74,10 +88,18 @@ func (csl *ColourizedOutputLogger) Errorf(format string, a ...interface{}) error
 }
 
 func (csl *ColourizedOutputLogger) Debug(s string) error {
+	if !csl.debugEnabled {
+		return nil
+	}
+
 	return csl.emit("DEBUG  ", s, "debug")
 }
 
 func (csl *ColourizedOutputLogger) Debugf(format string, a ...interface{}) error {
+	if !csl.debugEnabled {
+		return nil
+	}
+
 	output := fmt.Sprintf(format, a...)
 	return csl.emit("DEBUG  ", output, "debug")
 }
@@ -98,7 +120,7 @@ func (csl *ColourizedOutputLogger) emit(prefix string, msg string, level string)
 	now := time.Now().Format(time.RFC822Z)
 	output := fmt.Sprintf("[%s][%s] %s\n", prefix, now, msg)
 
-	colourized_byte_output := []byte(csl.level_colours[level](output))
-	_, err := csl.output_target.Write(colourized_byte_output)
+	colourizedByteOutput := []byte(csl.levelColours[level](output))
+	_, err := csl.outputTarget.Write(colourizedByteOutput)
 	return err
 }

@@ -95,7 +95,14 @@ func main() {
 	var partitions stringslice
 	flag.Var(&partitions, "partition", "XFS partition to freeze/un-freeze.")
 
+	// Add in a debug flag to show detailed logging output for diagnosis.
+	var debugMode bool
+	flag.BoolVar(&debugMode, "debug", false, "Enable debug output in logs.")
+
 	flag.Parse()
+
+	// Enable debug mode if the user has requested it.
+	logger.SetDebugOutput(debugMode)
 
 	// Do some sanity-checking on the arguments we're given.
 	// **TODO(silversupreme):** Add in support for figuring out what
@@ -111,7 +118,7 @@ func main() {
 		return
 	}
 
-	logger.Successf("Backing up volumes in %s region.", region)
+	logger.Debugf("Backing up volumes in %s region.", region)
 
 	// Check that the number of descriptions and volumes match up.
 	numDescriptions := len(descriptions)
@@ -166,7 +173,7 @@ func main() {
 	for volumeId, desc := range volumesToSnapshot {
 		go func(volumeId, desc string) {
 			// Create the snapshot if we can.
-			logger.Infof("Creating snapshot for %s", volumeId)
+			logger.Debugf("Creating snapshot for %s", volumeId)
 
 			resp, err := ec2_conn.CreateSnapshot(volumeId, desc)
 			if err != nil {
