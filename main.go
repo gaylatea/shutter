@@ -97,20 +97,29 @@ func main() {
 	flag.Parse()
 
 	// Do some sanity-checking on the arguments we're given.
-	// **TODO(silversupreme):** Add in support for figuring out what
-	// region to use from the EC2 instance metadata.
+	var realRegion string
+
 	if *region == "" {
-		logger.Error("You did not specify a region!")
-		return
+		metadataRegion, err := aws.GetMetaData("placement/availability-zone")
+		if err != nil {
+			logger.Errorf("Could not get instance metadata for region: %s", err)
+			return
+		}
+
+		// Gotta take out the last character of the AZ for the proper
+		// region name.
+		realRegion = string(metadataRegion[:(len(metadataRegion) - 1)])
+	} else {
+		realRegion = *region
 	}
 
-	awsRegion, present := aws.Regions[*region]
+	awsRegion, present := aws.Regions[realRegion]
 	if !present {
-		logger.Errorf("Given region %s not a supported AWS region!", *region)
+		logger.Errorf("Given region %s not a supported AWS region!", realRegion)
 		return
 	}
 
-	logger.Successf("Backing up volumes in %s region.", *region)
+	logger.Successf("Backing up volumes in %s region.", realRegion)
 
 	// Check that the number of descriptions and volumes match up.
 	numDescriptions := len(descriptions)
