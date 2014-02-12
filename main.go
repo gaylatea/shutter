@@ -155,7 +155,7 @@ func main() {
 	// Connect to EC2 and make sure everything is alright there.
 	credentials, err := aws.GetAuth("", "")
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Errorf("Auth failure: %s", err.Error())
 		return
 	}
 

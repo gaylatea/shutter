@@ -330,7 +330,7 @@ attached to the currently-running instance, if we can.</p>
             <td class="code">
                 <div class="highlight"><pre>	<span class="nx">credentials</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">GetAuth</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
 	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-		<span class="nx">logger</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+		<span class="nx">logger</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;Auth failure: %s&quot;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
 		<span class="k">return</span>
 	<span class="p">}</span>
 
