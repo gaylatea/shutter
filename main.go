@@ -163,7 +163,7 @@ func main() {
 	w.Add(numVolumes)
 
 	for volumeId, desc := range volumesToSnapshot {
-		go func(volumeId, desc string, ec2_conn *ec2.EC2) {
+		go func(volumeId, desc string) {
 			// Create the snapshot if we can.
 			logger.Infof("Creating snapshot for %s", volumeId)
 
@@ -176,7 +176,7 @@ func main() {
 
 			logger.Successf("Created snapshot %s for %s", resp.Snapshot.Id, volumeId)
 			w.Done()
-		}(volumeId, desc, ec2_conn)
+		}(volumeId, desc)
 	}
 
 	w.Wait()

@@ -338,7 +338,7 @@ Skip over any that are not actually present in EC2.</p>
 	<span class="nx">w</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="nx">numVolumes</span><span class="p">)</span>
 
 	<span class="k">for</span> <span class="nx">volumeId</span><span class="p">,</span> <span class="nx">desc</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">volumesToSnapshot</span> <span class="p">{</span>
-		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">volumeId</span><span class="p">,</span> <span class="nx">desc</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">ec2_conn</span> <span class="o">*</span><span class="nx">ec2</span><span class="p">.</span><span class="nx">EC2</span><span class="p">)</span> <span class="p">{</span></pre></div>
+		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">volumeId</span><span class="p">,</span> <span class="nx">desc</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span></pre></div>
             </td>
           </tr>
           
@@ -362,7 +362,7 @@ Skip over any that are not actually present in EC2.</p>
 
 			<span class="nx">logger</span><span class="p">.</span><span class="nx">Successf</span><span class="p">(</span><span class="s">&quot;Created snapshot %s for %s&quot;</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Snapshot</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">volumeId</span><span class="p">)</span>
 			<span class="nx">w</span><span class="p">.</span><span class="nx">Done</span><span class="p">()</span>
-		<span class="p">}(</span><span class="nx">volumeId</span><span class="p">,</span> <span class="nx">desc</span><span class="p">,</span> <span class="nx">ec2_conn</span><span class="p">)</span>
+		<span class="p">}(</span><span class="nx">volumeId</span><span class="p">,</span> <span class="nx">desc</span><span class="p">)</span>
 	<span class="p">}</span>
 
 	<span class="nx">w</span><span class="p">.</span><span class="nx">Wait</span><span class="p">()</span>
