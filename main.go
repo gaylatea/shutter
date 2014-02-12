@@ -73,7 +73,8 @@ func main() {
 	logger, _ := util.NewColourizedOutputLogger(os.Stdout)
 
 	// **-region:** only required if not running on an EC2 instance.
-	var region = flag.String("region", "", "EC2 region to look for EBS volumes in.")
+	var region string
+	flag.StringVar(&region, "region", "", "EC2 region to look for EBS volumes in.")
 
 	// **-volume[]:** Can be specified multiple times.
 	// Defines the volumes that we are backing up.
@@ -99,18 +100,18 @@ func main() {
 	// Do some sanity-checking on the arguments we're given.
 	// **TODO(silversupreme):** Add in support for figuring out what
 	// region to use from the EC2 instance metadata.
-	if *region == "" {
+	if region == "" {
 		logger.Error("You did not specify a region!")
 		return
 	}
 
-	awsRegion, present := aws.Regions[*region]
+	awsRegion, present := aws.Regions[region]
 	if !present {
-		logger.Errorf("Given region %s not a supported AWS region!", *region)
+		logger.Errorf("Given region %s not a supported AWS region!", region)
 		return
 	}
 
-	logger.Successf("Backing up volumes in %s region.", *region)
+	logger.Successf("Backing up volumes in %s region.", region)
 
 	// Check that the number of descriptions and volumes match up.
 	numDescriptions := len(descriptions)

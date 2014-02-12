@@ -148,7 +148,8 @@ its descendents.</p>
 
             </td>
             <td class="code">
-                <div class="highlight"><pre>	<span class="kd">var</span> <span class="nx">region</span> <span class="p">=</span> <span class="nx">flag</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;region&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;EC2 region to look for EBS volumes in.&quot;</span><span class="p">)</span></pre></div>
+                <div class="highlight"><pre>	<span class="kd">var</span> <span class="nx">region</span> <span class="kt">string</span>
+	<span class="nx">flag</span><span class="p">.</span><span class="nx">StringVar</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">region</span><span class="p">,</span> <span class="s">&quot;region&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;EC2 region to look for EBS volumes in.&quot;</span><span class="p">)</span></pre></div>
             </td>
           </tr>
           
@@ -214,18 +215,18 @@ region to use from the EC2 instance metadata.</p>
 
             </td>
             <td class="code">
-                <div class="highlight"><pre>	<span class="k">if</span> <span class="o">*</span><span class="nx">region</span> <span class="o">==</span> <span class="s">&quot;&quot;</span> <span class="p">{</span>
+                <div class="highlight"><pre>	<span class="k">if</span> <span class="nx">region</span> <span class="o">==</span> <span class="s">&quot;&quot;</span> <span class="p">{</span>
 		<span class="nx">logger</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="s">&quot;You did not specify a region!&quot;</span><span class="p">)</span>
 		<span class="k">return</span>
 	<span class="p">}</span>
 
-	<span class="nx">awsRegion</span><span class="p">,</span> <span class="nx">present</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">Regions</span><span class="p">[</span><span class="o">*</span><span class="nx">region</span><span class="p">]</span>
+	<span class="nx">awsRegion</span><span class="p">,</span> <span class="nx">present</span> <span class="o">:=</span> <span class="nx">aws</span><span class="p">.</span><span class="nx">Regions</span><span class="p">[</span><span class="nx">region</span><span class="p">]</span>
 	<span class="k">if</span> <span class="p">!</span><span class="nx">present</span> <span class="p">{</span>
-		<span class="nx">logger</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;Given region %s not a supported AWS region!&quot;</span><span class="p">,</span> <span class="o">*</span><span class="nx">region</span><span class="p">)</span>
+		<span class="nx">logger</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;Given region %s not a supported AWS region!&quot;</span><span class="p">,</span> <span class="nx">region</span><span class="p">)</span>
 		<span class="k">return</span>
 	<span class="p">}</span>
 
-	<span class="nx">logger</span><span class="p">.</span><span class="nx">Successf</span><span class="p">(</span><span class="s">&quot;Backing up volumes in %s region.&quot;</span><span class="p">,</span> <span class="o">*</span><span class="nx">region</span><span class="p">)</span></pre></div>
+	<span class="nx">logger</span><span class="p">.</span><span class="nx">Successf</span><span class="p">(</span><span class="s">&quot;Backing up volumes in %s region.&quot;</span><span class="p">,</span> <span class="nx">region</span><span class="p">)</span></pre></div>
             </td>
           </tr>
           
