@@ -104,21 +104,37 @@ func main() {
 	// Enable debug mode if the user has requested it.
 	logger.SetDebugOutput(debugMode)
 
+	// Connect to EC2 and make sure everything is alright there.
+	credentials, err := aws.GetAuth("", "")
+	if err != nil {
+		logger.Error(err.Error())
+		return
+	}
+
 	// Do some sanity-checking on the arguments we're given.
-	// **TODO(silversupreme):** Add in support for figuring out what
-	// region to use from the EC2 instance metadata.
+	var realRegion string
+
 	if region == "" {
-		logger.Error("You did not specify a region!")
-		return
+		metadataRegion, err := aws.GetMetaData("placement/availability-zone")
+		if err != nil {
+			logger.Errorf("Could not get instance metadata for region: %s", err)
+			return
+		}
+
+		// Gotta take out the last character of the AZ for the proper
+		// region name.
+		realRegion = string(metadataRegion[:(len(metadataRegion) - 1)])
+	} else {
+		realRegion = region
 	}
 
-	awsRegion, present := aws.Regions[region]
+	awsRegion, present := aws.Regions[realRegion]
 	if !present {
-		logger.Errorf("Given region %s not a supported AWS region!", region)
+		logger.Errorf("Given region %s not a supported AWS region!", realRegion)
 		return
 	}
 
-	logger.Debugf("Backing up volumes in %s region.", region)
+	ec2_conn := ec2.New(credentials, awsRegion)
 
 	// Check that the number of descriptions and volumes match up.
 	numDescriptions := len(descriptions)
@@ -126,9 +142,37 @@ func main() {
 
 	// **TODO(silversupreme):** Make this instead use all volumes
 	// attached to the currently-running instance, if we can.
+	var realVolumes []string
+
 	if numVolumes < 1 {
-		logger.Error("No volumes specified!")
-		return
+		// Get the current instance ID from the metadata service.
+		metadataInstanceID, err := aws.GetMetaData("instance-id")
+		if err != nil {
+			logger.Errorf("Could not get instance metadata for ID: %s", err)
+			return
+		}
+
+		// Get only the right EBS volumes for this instance.
+		instanceDriveFilter := ec2.NewFilter()
+		instanceDriveFilter.Add("attachment.instance-id", string(metadataInstanceID))
+
+		ebsVols, err := ec2_conn.Volumes(nil, instanceDriveFilter)
+		if err != nil {
+			logger.Errorf("Could not retrieve EBS volumes: %s", err)
+			return
+		}
+
+		for _, vol := range ebsVols.Volumes {
+			realVolumes = append(realVolumes, vol.VolumeId)
+		}
+
+		numVolumes = len(realVolumes)
+		if numVolumes < 1 {
+			logger.Errorf("No EBS volumes found on this instance!")
+			return
+		}
+	} else {
+		realVolumes = volumes
 	}
 
 	if numDescriptions != 1 {
@@ -140,7 +184,7 @@ func main() {
 
 	// Gather up all of the volumes and their descriptions.
 	volumesToSnapshot := map[string]string{}
-	for key, value := range volumes {
+	for key, value := range realVolumes {
 		var thisDescription string
 
 		if numDescriptions == 1 {
@@ -151,15 +195,6 @@ func main() {
 
 		volumesToSnapshot[value] = thisDescription
 	}
-
-	// Connect to EC2 and make sure everything is alright there.
-	credentials, err := aws.GetAuth("", "")
-	if err != nil {
-		logger.Errorf("Auth failure: %s", err.Error())
-		return
-	}
-
-	ec2_conn := ec2.New(credentials, awsRegion)
 
 	// Freeze the requested filesystem.
 	freeze(partitions, logger)
