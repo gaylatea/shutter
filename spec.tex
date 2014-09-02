@@ -1,0 +1,170 @@
+\documentclass[letter,12pt,x11names]{article}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows, chains, positioning}
+
+\lhead{ }
+\rhead{\textbf{Shutter: A Block Device Snapshot and Restoration Workflow}}
+
+\colorlet{lcfree}{Green3}
+\colorlet{lcnorm}{Blue3}
+\colorlet{lccong}{Red3}
+\tikzset{
+  base/.style={draw, on chain, on grid, align=center, minimum height=4ex},
+  proc/.style={base, rectangle, text width=8em},
+  ref/.style={proc, fill=lcnorm!25, rounded corners, font={\bfseries}},
+  test/.style={base, diamond, aspect=1, text width=5em, font={\bfseries}},
+  term/.style={proc, rounded corners, font={\bfseries}},
+  % coord node style is used for placing corners of connecting lines
+  coord/.style={coordinate, on chain, on grid, node distance=6mm and 25mm},
+  % nmark node style is used for coordinate debugging marks
+  nmark/.style={draw, cyan, circle, font={\sffamily\bfseries}},
+  % -------------------------------------------------
+  % Connector line styles for different parts of the diagram
+  norm/.style={->, draw, lcnorm},
+  free/.style={->, draw, lcfree},
+  cong/.style={->, draw, lccong},
+  it/.style={font={\small\itshape}}
+}
+\begin{document}
+
+\section{Abstract}
+
+Services which maintain underlying state for other programs need comprehensive backup solutions for that state. At AdRoll, we run our applications in Amazon's EC2 environment, which provides several powerful tools for programmatically performing these backups. \emph{Shutter} describes a workflow for leveraging these tools to reliably back up underlying block device storage for these services in a way that is easily catalogued and restored from.
+
+\section{Introduction}
+This document defines \emph{Shutter}, a workflow for backing up EBS drives. It is  three components:
+
+\begin{itemize}
+\item \emph{snapshotting}: the process of taking consistent EBS snapshots and tagging them appropriately so that restoration processes can find them,
+\item \emph{restoration}: the process of computing which of the snapshots stored by \emph{Shutter} is the one to use given a set of requirements by the user, and attaching them to the currently-running instance, and
+\item \emph{garbage collection}: the process of cleaning up older snapshots that have no value.
+\end{itemize}
+
+\subsection{Requirements Notation}
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC2119].
+
+\newpage
+
+\begin{tikzpicture}[>=triangle 60, start chain=going below, node distance=6mm and 60mm, every join/.style={norm}]
+\node [term, fill=lcfree!25] (start) {START};
+
+\node [test, join] (ec2) {On EC2 instance?};
+
+\node [proc, join, right=45mm of ec2] (uuid) {Generate snapshot UUID};
+\node [right=0mm of uuid, it] {(See section 5.)};
+
+\node [ref, join] (sentinel) {Create Sentinel file};
+\node [right=0mm of sentinel, it] {(See figure 2.)};
+
+\node [proc, join] (collect) {Collect EBS drives};
+\node [right=0mm of collect, it] {(See section 4.)};
+
+\node [ref, join] (spawn) {Spawn snapshot workers};
+\node [right=0mm of spawn, it] {(See figure 4.)};
+
+\node [proc, join] (wait) {Wait};
+
+\node [test, join] (errors) {Snapshot errors?};
+
+\node [ref, join] (removesentinel) {Remove sentinel file};
+\node [right=0mm of removesentinel, it] {(See figure 2.)};
+
+\node [term, join, fill=lccong!25] (stop) {STOP};
+
+\node [ref, right=of errors] (cleanup) {Cleanup resources};
+\node [above=0mm of cleanup, it] {(See figure 5.)};
+
+\path (errors.east) to node [near start, yshift=0.75em, xshift=1em, color=lccong] {(any error)} (cleanup);
+  \draw [->, lccong, dotted, thick, shorten >= 1mm] (errors) -- (cleanup);
+
+\draw [->, norm] (cleanup.south) |- (stop.east);
+\draw [->, norm] (wait.east) -- ++(3mm, 0) |- ++(-20mm, 7mm);
+
+\path (ec2.south) to node [near start, xshift=1em, color=lccong] {(no)} ++(4mm, -10mm);
+\draw [->, lccong, dotted, thick, shorten >= 1mm] (ec2.south) |- (stop.west);
+\end{tikzpicture}
+
+\textbf{Figure 1. Snapshot Top-Level Flow.}
+
+\newpage
+
+\begin{tikzpicture}[>=triangle 60, start chain=going below, node distance=6mm and 60mm, every join/.style={norm}]
+
+\node [term, fill=lcfree!25] (start) {START};
+
+\node [test, join] (existing) {Existing sentinel file?};
+\node [proc, join] (useexisting) {Use existing previous UUID};
+
+\node [proc, join] (upload) {Upload/replace to S3};
+
+\node [proc, join] (wait) {Wait for completion signal};
+
+\node [proc, join] (remove) {Remove S3 file};
+
+\node [term, join, fill=lccong!25] (stop) {STOP};
+
+\node [ref, right=of existing] (searchforuuid) {Search for last snapshot};
+\node [above=0mm of searchforuuid, it] {(See figure 3.)};
+
+\path (existing.east) to node [near start, yshift=0.5em, xshift=1em, color=lccong] {(no file)} (searchforuuid.west);
+
+\draw[->, lccong, dotted, thick, shorten >= 1mm] (existing.east) -- (searchforuuid.west);
+\draw[->, lcnorm] (searchforuuid.south) |- (upload.east);
+
+\end{tikzpicture}
+
+\textbf{Figure 2. Sentinel Data File.}
+
+\newpage
+
+\begin{tikzpicture}[>=triangle 60, start chain=going below, node distance=6mm and 60mm, every join/.style={norm}]
+
+\node [term, fill=lcfree!25] (start) {START};
+
+\node [proc, join] (begin) {Begin in Oregon region};
+\node [proc, join] (getall) {Get all EBS snapshots in this region};
+
+\node [test, join] (exist) {Snapshot match?};
+
+\node [proc, join] (existinguuid) {Use UUID of latest snapshot};
+
+\node [proc, join] (signal) {Signal to parent};
+
+\node [term, join, fill=lccong!25] (stop) {STOP};
+
+\node [test, right=of exist] (lastregion) {Searched all regions?};
+
+\node [proc] (usenull) {Use NULL UUID};
+\node [proc, above=6mm of lastregion.north] (moveon) {Connect to next region};
+\node [above=0mm of moveon, it] {(See section 6.)};
+
+\path (exist.east) to node [near start, xshift=1em, yshift=1em, color=lccong] {(no match)} (lastregion.west);
+\path (lastregion.south) to node [near start, xshift=1.5em, color=lccong] {(yes)} (usenull.north);
+
+\draw[->, lccong, dotted, thick, shorten >= 1mm] (lastregion.south) -- (usenull.north);
+\draw[->, lccong, dotted, thick, shorten >= 1mm] (exist.east) -- (lastregion.west);
+\draw[->, lcnorm] (usenull.south) |- (signal.east);
+\draw[->, lcnorm] (lastregion.north) -- (moveon.south);
+\draw[->, lcnorm] (moveon.west) -- (getall.east);
+
+\end{tikzpicture}
+
+\textbf{Figure 3. Search for Last Snapshot.}
+
+\newpage
+
+\begin{tikzpicture}[>=triangle 60, start chain=going below, node distance=6mm and 60mm, every join/.style={norm}]
+
+\node [term, fill=lcfree!25] (start) {START};
+
+\node [proc, join] () {};
+
+\node [term, join, fill=lccong!25] (stop) {STOP};
+
+\end{tikzpicture}
+
+\textbf{Figure 4. Snapshot worker.}
+
+\end{document}
